@@ -33,6 +33,17 @@ pnpm-workspace.yaml # Workspace management
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v18+ recommended)
 - [pnpm](https://pnpm.io/)
+- PostgreSQL database (local or hosted, e.g., Supabase)
+
+### Environment Setup
+1. **Database Configuration**
+   - Set up a PostgreSQL database (local or Supabase)
+   - Copy environment variables and update `packages/utils/db.ts` if needed
+   - Run database migrations:
+     ```sh
+     npx prisma migrate dev
+     npx prisma db seed
+     ```
 
 ### Install dependencies
 ```sh
@@ -42,6 +53,21 @@ pnpm install
 ### Develop all apps/packages
 ```sh
 pnpm turbo dev
+```
+
+Individual app development:
+```sh
+# Student-facing app (port 3000)
+pnpm turbo dev --filter=web
+
+# Admin dashboard (port 3001)
+pnpm turbo dev --filter=admin
+
+# Tutor dashboard (port 3002)
+pnpm turbo dev --filter=tutor
+
+# Documentation (port 3003)
+pnpm turbo dev --filter=docs
 ```
 
 ### Build all apps/packages
@@ -58,47 +84,89 @@ pnpm turbo lint
 - **Frontend:** Next.js App Router, TypeScript, TailwindCSS, shadcn/ui
 - **Backend/API:** Next.js API Routes, scalable to microservices
 - **Database:** PostgreSQL via Prisma ORM
-- **Authentication:** NextAuth.js or Supabase Auth
+- **Authentication:** NextAuth.js v4.24.6 with role-based access control
 - **Monorepo Tooling:** Turborepo, pnpm
 - **Testing:** Playwright (E2E), Vitest (unit/integration)
 - **Deployment:** Vercel
 
-## Role-Based Platform Logic
-- **Student:** Personalized learning modules by exam type
-- **Admin:** Full platform management, analytics, user/tutor control
-- **Tutor:** Focused dashboard for student interaction and content
+## Authentication System
 
-## Authentication Setup
+Infinity English uses [NextAuth.js](https://next-auth.js.org/) for authentication across all apps with role-based access control.
 
-Infinity English uses [NextAuth.js](https://next-auth.js.org/) for authentication in the `web` app.
+### Role-Based Access Control
+- **Web App** (`/apps/web`): All user roles (STUDENT, ADMIN, TUTOR) can access
+- **Admin App** (`/apps/admin`): Only ADMIN role can access
+- **Tutor App** (`/apps/tutor`): Only TUTOR role can access
 
-### How it works
-- Credentials (email/password) provider is enabled for MVP.
-- User passwords are securely hashed with bcrypt.
-- User sessions include `id` and `role` for role-based access.
-- Login page is available at `/login`.
+### How Authentication Works
+- **Provider:** Credentials (email/password) with bcrypt password hashing
+- **Session Management:** JWT strategy with user ID and role persistence
+- **Access Control:** Server-side session checks with automatic redirects
+- **Login Pages:** Each app has its own `/login` route
+
+### Database Schema
+Users are stored with the following roles:
+- `STUDENT`: Medical professionals preparing for exams
+- `ADMIN`: Platform administrators with full access
+- `TUTOR`: Instructors with student interaction capabilities
 
 ### Adding Users
-- Users must be present in the database with a hashed password.
-- You can add users via a seed script, admin panel (future), or directly in the database.
-- To hash a password for manual insertion, use bcrypt:
-  ```js
-  // In a Node.js REPL or script
-  const bcrypt = require('bcrypt');
-  bcrypt.hashSync('yourpassword', 10);
-  ```
-
-### Testing Login
-1. Start the dev server:
+1. **Via Database Seeding:**
    ```sh
-   pnpm turbo dev --filter=web
+   npx prisma db seed
    ```
-2. Go to `http://localhost:3000/login`.
-3. Sign in with a valid email and password.
 
-### Extending Authentication
-- You can add social providers (Google, GitHub, etc.) by updating the NextAuth config in `/app/api/auth/[...nextauth]/route.ts`.
-- Session includes user role for role-based routing and access control.
+2. **Manual Password Hashing:**
+   ```js
+   // In a Node.js REPL or script
+   const bcrypt = require('bcrypt');
+   const hashedPassword = bcrypt.hashSync('yourpassword', 10);
+   console.log(hashedPassword);
+   ```
+
+3. **Direct Database Insertion:**
+   ```sql
+   INSERT INTO "User" (email, password, name, role) 
+   VALUES ('admin@test.com', '$hashed_password', 'Admin User', 'ADMIN');
+   ```
+
+### Testing Authentication
+1. **Start development servers:**
+   ```sh
+   pnpm turbo dev
+   ```
+
+2. **Access login pages:**
+   - Web App: `http://localhost:3000/login`
+   - Admin App: `http://localhost:3001/login`
+   - Tutor App: `http://localhost:3002/login`
+
+3. **Test role-based access:**
+   - Try accessing admin dashboard with non-admin credentials
+   - Verify automatic redirects work correctly
+
+### API Health Checks
+Each app includes a `/api/health` endpoint for monitoring database connectivity:
+- Web: `http://localhost:3000/api/health`
+- Admin: `http://localhost:3001/api/health`
+- Tutor: `http://localhost:3002/api/health`
+
+## Development Status
+
+### ✅ Completed Features
+- **Monorepo Architecture**: Turborepo + pnpm workspace setup
+- **Database Integration**: PostgreSQL with Prisma ORM
+- **Authentication System**: NextAuth.js with role-based access control
+- **Role-Based Routing**: Automatic redirects and session management
+- **Build System**: All apps compile successfully with TypeScript
+- **API Infrastructure**: Health endpoints and database connectivity
+
+### 🚧 Next Development Priorities
+1. **UI Enhancement**: Implement shadcn/ui design system
+2. **User Registration**: Signup flow and user onboarding
+3. **Student Dashboard**: Learning modules and progress tracking
+4. **Content Management**: Admin tools for course creation
+5. **Tutor Tools**: Student interaction and assessment features
 
 ## Contributing
 1. Fork the repo and create your branch from `main`.
