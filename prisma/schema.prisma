@@ -1,0 +1,65 @@
+// Prisma schema for Infinity English
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+  TUTOR
+}
+
+enum ExamTypeEnum {
+  OET
+  IELTS
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String   // hashed
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studentProfile StudentProfile?
+  tutorProfile   TutorProfile?
+  adminProfile   AdminProfile?
+}
+
+model ExamType {
+  id   String       @id @default(uuid())
+  name ExamTypeEnum @unique
+  students StudentProfile[]
+}
+
+model StudentProfile {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @unique
+  examType  ExamType @relation(fields: [examTypeId], references: [id])
+  examTypeId String
+  // Add onboarding fields as needed
+  assignedTutor TutorProfile? @relation(fields: [assignedTutorId], references: [id])
+  assignedTutorId String?
+}
+
+model TutorProfile {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @unique
+  students  StudentProfile[]
+}
+
+model AdminProfile {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @unique
+} 
